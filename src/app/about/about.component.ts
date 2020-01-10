@@ -1,4 +1,6 @@
 import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { createHttpObservable } from '../common/util';
+import { noop } from 'rxjs';
 
 @Component({
   selector: 'about',
@@ -7,9 +9,18 @@ import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 })
 export class AboutComponent implements OnInit {
 
-  constructor() { }
+    ngOnInit() {
+        // const click$ = fromEvent(document, 'click');
 
-  ngOnInit() {
-  }
+        // click$.subscribe(evt => console.log(evt));
 
+        const http$ = createHttpObservable('/api/courses');
+
+        http$.subscribe(
+            courses => console.log(courses),
+            noop,
+            () => console.log('completed')
+            );
+
+    }
 }
