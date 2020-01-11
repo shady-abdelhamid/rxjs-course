@@ -56,9 +56,17 @@ export class CourseDialogComponent implements OnInit, AfterViewInit {
         }));
     }
 
+    /** saves final version of course using exustMap.
+     *  that is because it prevent invoking the save function
+     *  multible time
+     */
     ngAfterViewInit() {
 
-
+        fromEvent(this.saveButton.nativeElement, 'click')
+            .pipe(
+                exhaustMap(() => this.saveCourse(this.form.value))
+            ).subscribe();
+        
     }
 
 
