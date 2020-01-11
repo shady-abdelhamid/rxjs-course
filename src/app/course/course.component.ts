@@ -1,6 +1,6 @@
-import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
-import {ActivatedRoute} from "@angular/router";
-import {Course} from "../model/course";
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { ActivatedRoute } from "@angular/router";
+import { Course } from "../model/course";
 import {
     debounceTime,
     distinctUntilChanged,
@@ -11,11 +11,12 @@ import {
     concatMap,
     switchMap,
     withLatestFrom,
-    concatAll, shareReplay
+    concatAll, shareReplay, mergeMap
 } from 'rxjs/operators';
-import {merge, fromEvent, Observable, concat} from 'rxjs';
-import {Lesson} from '../model/lesson';
+import { merge, fromEvent, Observable, concat } from 'rxjs';
+import { Lesson } from '../model/lesson';
 import { createHttpObservable } from '../common/util';
+import { searchLessons } from '../../../server/search-lessons.route';
 
 @Component({
     selector: 'course',
@@ -24,9 +25,11 @@ import { createHttpObservable } from '../common/util';
 })
 export class CourseComponent implements OnInit, AfterViewInit {
 
-    course$ : Observable<Course>;
+    courseId: string;
 
-    lessons$ : Observable<Lesson[]>;
+    course$: Observable<Course>;
+
+    lessons$: Observable<Lesson[]>;
 
     @ViewChild('searchInput', { static: true }) input: ElementRef;
 
@@ -36,29 +39,37 @@ export class CourseComponent implements OnInit, AfterViewInit {
     }
 
     ngOnInit() {
-
-        const courseId = this.route.snapshot.params['id'];
-
-        this.course$ = createHttpObservable(`/api/courses/${courseId}`);
-
-        this.lessons$ = createHttpObservable(`/api/lessons?courseId=${courseId}&pageSize=100`)
-            .pipe(map(res => Object.values(res['payload'])));
-
+        this.courseId = this.route.snapshot.params['id'];
+        this.course$ = createHttpObservable(`/api/courses/${this.courseId}`);
     }
 
+    /**
+     * display lessons according to search term. 
+     * if not display all course lessons
+     */
     ngAfterViewInit() {
-        fromEvent(this.input.nativeElement, 'keyup')
-            .pipe(
-                map(event => event['target'].value),
-                debounceTime(400),
-                distinctUntilChanged()
-            ).subscribe(console.log);
+        const searchLessons$ = fromEvent(this.input.nativeElement, 'keyup')
+        .pipe(
+            map(event => event['target'].value),
+            debounceTime(400),
+            distinctUntilChanged(),
+            switchMap(search => this.loadLessons(search))
+            );
 
-
+        const initialLessons$ = this.loadLessons();
+        
+        this.lessons$ = concat(initialLessons$, searchLessons$);
+            
 
     }
 
-
+    /** loads lessons according the search term
+     * @param search a string with defaults value of empty
+     */
+    loadLessons(search = ''): Observable<Lesson[]> {
+        return createHttpObservable(`/api/lessons?courseId=${this.courseId}&pageSize=100&filter=${search}`)
+            .pipe(map(res => Object.values(res['payload'])));
+    }
 
 
 }
